@@ -9,8 +9,6 @@ from sklearn.naive_bayes import MultinomialNB
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score
 
-#Import the split_corpus function
-from Split_Corpus import split_corpus
 
 def create_arg_parser():
     parser = argparse.ArgumentParser()
