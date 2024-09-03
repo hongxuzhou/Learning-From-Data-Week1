@@ -1,0 +1,69 @@
+%
+%
+%% Based on the style files for EACL-2017
+
+\documentclass[11pt]{article}
+\usepackage{eacl2017}
+\usepackage{times}
+\usepackage{url}
+\usepackage{latexsym}
+
+
+%%%% LEAVE THIS IN
+\eaclfinalcopy
+
+
+\newcommand\BibTeX{B{\sc ib}\TeX}
+
+
+
+\title{Template for LfD 2024-2025 Reports -- Your title goes here}
+
+\author{Your name \\
+  any other info (student number, for example) \\
+  {\tt email@domain}}
+
+\date{}
+
+\begin{document}
+\maketitle
+\begin{abstract}
+It's good to get used soon to writing proper abstracts to research papers. Give it a try, and we will provide feedback.
+ \end{abstract}
+
+
+
+\section{Introduction}
+
+The template is structured along the lines of a research paper, and you can fill each appropriate section with the relevant information. The idea is that you get used to using the standard format adopted in research to report on experiments. At times this might feel a little stretched in the context of homework and the exercises you are asked to complete, but give it a try. Also, don't get too hung up about what should go where: try make decisions, and we will give you feedback. Finally, for specific assignments you might want to implement some modifications to the template (for example in case you don't have a separate test set, or you might want to have a more general ``Experiments'' section in case you have to run more than one, and stuff like that). Feel free to do so, as long as you maintain some proper structure which is appropriate for a research paper. Additional questions can be answered in the final section.
+
+\section{Related Work}
+
+Here you can report the results of related work. Make sure to relate the results back to your own work. Remember that you can always cite other works via the \verb!\cite{}! command, by including entries in your \verb!.bib! file. 
+
+\section{Data}
+
+Here you will report on what data you used.  Examples questions you might want to bear in mind when describing your data: How much is it? How is it distributed? Is it preprocessed? Did you add any further preprocessing? Where did it come from? Is it annotated? Do you know anything about inter-annotator agreement?
+
+\section{Method}
+
+Here you will report on the method(s) you chose to run your experiments. Also evaluation methods can go here. Any settings you used also can be described here. Do you have a separate dev set? Do you use cross-validation? What features are you using? What algorithms are you using? What are their properties?
+
+\section{Results}
+
+Your final results on test data. You can also include here some results on development, of course, but you should keep them clearly separate from results on test data. It can happen that for some assignments you have no separate test set, so this section in case can be merged with the previous one.
+
+\section{Discussion}
+
+What observations can you glean from the results? In the context of the course, you can really use this space not only to discuss the actual results with your own observations, but also to add some reflections on what you had to do, strategies you adopted, what you could do differently, and so on. However, try to write it in a formal manner and with a research perspective, e.g. leave out things like "we had trouble installing the correct libraries".
+
+\section{Conclusion}
+
+Summarize your main findings and suggest avenues for future work. Usually quite similar to the abstract, but not a direct copy.
+
+
+
+\bibliographystyle{eacl2017}
+\bibliography{yourbibfile}
+
+\end{document}
