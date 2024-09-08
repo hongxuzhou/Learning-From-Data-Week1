@@ -3,6 +3,13 @@
 '''
 # TODO: expand description
 This script performs text classification using multiple machine learning algorithms (NB, DT, RF, KNN, SVC, LinearSVC).
+
+@arg -t, --train_file: specifies the train file to learn from
+@arg -d, --dev_file: specifies the dev file to evaluate on
+@arg -s, --sentiment: specifies whether sentiment analysis is performed
+@arg -tf, --tfidf: specifies whether to use TfidfVectorizer
+@arg -a, --algorithm: specifies the Machine Learning algorithm to use
+@arg -avg, --average: specifies the averaging technique used in evaluation
 '''
 
 import argparse
@@ -13,7 +20,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
 
 
 def create_arg_parser():
@@ -27,7 +34,9 @@ def create_arg_parser():
     parser.add_argument("-tf", "--tfidf", action="store_true",
                         help="Use the TF-IDF vectorizer instead of CountVectorizer")
     parser.add_argument("-a", "--algorithm", default='naive_bayes', type=str,
-                        help="Machine Learning Algorithm to use, options are: naive_bayes, decision_tree, random_forest, knn, svc, linear_svc")
+                        help="Machine Learning Algorithm to use. Options are: naive_bayes, decision_tree, random_forest, knn, svc, linear_svc")
+    parser.add_argument("-avg", "--average", default='weighted', type=str,
+                        help="Averaging technique to use in evaluation. Options are: binary, micro, macro, weighted, samples")
     args = parser.parse_args()
     return args
 
@@ -86,11 +95,11 @@ def get_classifier(algorithm):
         return KNeighborsClassifier()
     # Support Vector Classification implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
-    if algorithm == 'svm':
+    if algorithm in ['svc','svm']:
         return SVC()
     # Linear Support Vector Classification implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html#sklearn.svm.LinearSVC
-    if algorithm == 'svm_linear':
+    if algorithm in ['svm_linear','svc_linear']:
         return LinearSVC()
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
@@ -115,6 +124,9 @@ if __name__ == "__main__":
     # Get the classifier that was given in the input arguments
     chosen_classifier = get_classifier(args.algorithm)
 
+    # Get the averaging method for multi-class classification
+    chosen_average = args.average
+
     # Create a pipeline by combining the chosen vectorizer and classifier
     classifier = Pipeline([('vec', vec), ('cls', chosen_classifier)])
 
@@ -130,13 +142,17 @@ if __name__ == "__main__":
     print(f"Final accuracy: {acc}")
 
     # Precision: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html
-    precision = precision_score(Y_test, Y_pred)
+    precision = precision_score(Y_test, Y_pred, average=chosen_average)
     print(f"Final precision score: {precision}")
 
     # Recall: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html
-    recall = recall_score(Y_test, Y_pred)
+    recall = recall_score(Y_test, Y_pred, average=chosen_average)
     print(f"Final recall score: {recall}")
 
     # F1: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html
-    f1 = f1_score(Y_test, Y_pred)
+    f1 = f1_score(Y_test, Y_pred, average=chosen_average)
     print(f"Final f1 score: {f1}")
+
+    # Confusion matrix: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
+    confusion = confusion_matrix(Y_test, Y_pred)
+    print(f"Final confusion matrix:\n{confusion}")
