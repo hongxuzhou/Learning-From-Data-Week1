@@ -20,7 +20,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.pipeline import Pipeline
-from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix
+from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
 
 
 def create_arg_parser():
@@ -136,23 +136,33 @@ if __name__ == "__main__":
     # Let the model make predictions on the test set
     Y_pred = classifier.predict(X_test)
 
+    # General metrics
+
     # Evaluate the predictions that were made by comparing them to the ground truth, apply several metrics from the sklearn library for this:
     # Accuracy: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.accuracy_score.html
     acc = accuracy_score(Y_test, Y_pred)
-    print(f"Final accuracy: {acc}")
+    print(f"General accuracy: {acc}")
 
     # Precision: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.precision_score.html
     precision = precision_score(Y_test, Y_pred, average=chosen_average)
-    print(f"Final precision score: {precision}")
+    print(f"General precision score: {precision}")
 
     # Recall: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.recall_score.html
     recall = recall_score(Y_test, Y_pred, average=chosen_average)
-    print(f"Final recall score: {recall}")
+    print(f"General recall score: {recall}")
 
     # F1: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html
     f1 = f1_score(Y_test, Y_pred, average=chosen_average)
-    print(f"Final f1 score: {f1}")
+    print(f"General f1 score: {f1}\n")
+    
 
     # Confusion matrix: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
     confusion = confusion_matrix(Y_test, Y_pred)
-    print(f"Final confusion matrix:\n{confusion}")
+    print(f"Confusion matrix:\n{confusion}")  
+
+
+    print("\nPer-class scores")
+
+    #Classification report: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html
+    class_rep = classification_report(Y_test,Y_pred)
+    print(class_rep)
