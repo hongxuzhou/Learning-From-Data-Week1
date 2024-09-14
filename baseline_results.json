@@ -1,0 +1,16 @@
+{
+  "accuracy": 0.8934517203107658,
+  "precision": 0.8980333283837765,
+  "recall": 0.8959523674535365,
+  "confusion_matrix": [
+    [119, 2, 9, 0, 1, 3],
+    [0, 139, 1, 0, 0, 10],
+    [4, 2, 139, 0, 6, 1],
+    [3, 22, 1, 138, 1, 8],
+    [0, 0, 8, 0, 130, 4],
+    [5, 3, 1, 1, 0, 140]
+  ],
+  "classification_report": "              precision    recall  f1-score   support\n\n       books       0.91      0.89      0.90       134\n      camera       0.83      0.93      0.87       150\n         dvd       0.87      0.91      0.89       152\n      health       0.99      0.80      0.88       173\n       music       0.94      0.92      0.93       142\n    software       0.84      0.93      0.89       150\n\n    accuracy                           0.89       901\n   macro avg       0.90      0.90      0.89       901\nweighted avg       0.90      0.89      0.89       901\n",
+  "algorithm": "naive_bayes",
+  "averaging": "macro"
+}
