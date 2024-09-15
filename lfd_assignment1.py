@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 '''
-# TODO: expand description
 This script perform and evaluates text classification using multiple machine learning algorithms (NB, DT, RF, KNN, SVC, LinearSVC).
 In order to further evaluate them, it is also possible to specify feature sets and hyperparameters with which to experiment.
 
