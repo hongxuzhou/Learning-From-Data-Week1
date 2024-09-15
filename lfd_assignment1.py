@@ -2,7 +2,8 @@
 
 '''
 # TODO: expand description
-This script performs text classification using multiple machine learning algorithms (NB, DT, RF, KNN, SVC, LinearSVC).
+This script perform and evaluates text classification using multiple machine learning algorithms (NB, DT, RF, KNN, SVC, LinearSVC).
+In order to further evaluate them, it is also possible to specify feature sets and hyperparameters with which to experiment.
 
 @arg -t, --train_file: specifies the train file to learn from
 @arg -d, --dev_file: specifies the dev file to evaluate on
@@ -11,6 +12,18 @@ This script performs text classification using multiple machine learning algorit
 @arg -a, --algorithm: specifies the Machine Learning algorithm to use
 @arg -avg, --average: specifies the averaging technique used in evaluation
 @arg -f, --feature: specifies the features to be used in data preprocessing 
+@arg -cn, --char_ngram: specifies the number of characters to use in character-level ngrams
+@arg -wn, --word_ngram: specifies the number of words to use in word-level ngrams
+@arg --alpha: specifies the alpha hyperparameter for Naive Bayes
+@arg --max_depth: specifies the hyperparameter controlling maximum depth of a Decision Tree
+@arg --n_estimators: specifies the hyperparameter controlling number of trees for Random Forest
+@arg --criterion: specifies the hyperparameter controlling the function to measure quality of a split for Random Forest
+@arg --n_neighbors: specifies the hyperparameter controlling number of neighbours for KNN
+@arg --weights: specifies the hyperparameter controlling weight function used in prediction for KNN
+@arg --p: specifies the hyperparameter controlling power using he Minkowski metric in KNN
+@arg --C: specifies the regularization hyperparameter for SVC
+@arg --kernel: specifies the hyperparameter controlling kernel type to be used in SVC
+@arg --C_linear: specifies the regularization hyperparameter for linear SVC
 '''
 
 import argparse
@@ -45,10 +58,31 @@ def create_arg_parser():
                         help="Averaging technique to use in evaluation. Options are: binary, micro, macro, weighted, samples")
     parser.add_argument("-f", "--feature", default='identity', type=str,
                         help="Feature(s) used for tokenizer. Options are: identity, stemming, lemmatizing, ner, pos, or any COMMA-SEPARATED combination of them")
-    parser.add_argument("-cn", "--char_ngram", type = int, default = 0,
+    parser.add_argument("-cn", "--char_ngram", default=0, type=int,
                         help = "Use character n-gram. Please specify the maximum n-gram size") 
-    parser.add_argument("-wn", "--word_ngram", type = int, default = 1,
+    parser.add_argument("-wn", "--word_ngram", default=1, type=int,
                         help = "Use word n-gram. Please specify the maximum n-gram size")
+    parser.add_argument("--alpha", default=0.5, type=float,
+                        help="Alpha hyperparameter for Naive Bayes")
+    parser.add_argument("--max_depth", default=20, type=int,
+                        help="Hyperparameter controlling maximum depth of a Decision Tree")
+    parser.add_argument("--n_estimators", default=500, type=int,
+                        help="Hyperparameter controlling number of trees for Random Forest")
+    parser.add_argument("--criterion", default='entropy', type=str,
+                        help="Hyperparameter controlling the function to measure quality of a split for Random Forest. Options are: gini, entropy, log_loss")
+    parser.add_argument("--n_neighbors", default=35, type=int,
+                        help="Hyperparameter controlling number of neighbours for KNN")
+    parser.add_argument("--weights", default="distance", type=str,
+                        help="Hyperparameter controlling weight function used in prediction for KNN. Options are: uniform, distance")
+    parser.add_argument("--p", default=1, type=int,
+                        help="Hyperparameter controlling power using he Minkowski metric in KNN")
+    parser.add_argument("--C", default=1, type=float,
+                        help="Regularization hyperparameter for SVC")
+    parser.add_argument("--kernel", default="rbf", type=str,
+                        help="Hyperparameter controlling kernel type to be used in SVC. Options are: linear, poly, rbf, sigmoid, precomputed")
+    parser.add_argument("--C_linear", default=0.1, type=float,
+                        help="Regularization hyperparameter for linear SVC")
+    parser.add_argument
     args = parser.parse_args()
     return args
 
@@ -112,7 +146,6 @@ def pos(inp):
     doc = nlp(' '.join(inp))
     return [token.tag_ for token in doc]
 
-
 def combine_features(feats,text):
     '''Combines features by applying them one after the other, in the order in which they are input'''
     for feat in feats:
@@ -133,38 +166,38 @@ def get_classifier(algorithm):
     # Naive bayes implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html
     if algorithm == 'naive_bayes':
-        return MultinomialNB(alpha=0.5)
+        return MultinomialNB(alpha=args.alpha)
     # Decision tree implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
     if algorithm == 'decision_tree':
-        return DecisionTreeClassifier(max_depth=20)
+        return DecisionTreeClassifier(max_depth=args.max_depth)
     # Decision tree implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
     if algorithm == 'random_forest':
-        return RandomForestClassifier(n_estimators=500, criterion='entropy')
+        return RandomForestClassifier(n_estimators=args.n_estimators, criterion=args.criterion)
     # K Nearest Neighbours implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
     if algorithm == 'knn':
-        return KNeighborsClassifier(n_neighbors=35, weights='distance', p=1)
+        return KNeighborsClassifier(n_neighbors=args.n_neighbors, weights=args.weights, p=args.p)
     # Support Vector Classification implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
     if algorithm == 'svc':
-        return SVC(C=10, kernel='rbf')
+        return SVC(C=args.C, kernel=args.kernel)
     # Linear Support Vector Classification implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html#sklearn.svm.LinearSVC
     if algorithm == 'linear_svc':
-        return LinearSVC(C=0.1)
+        return LinearSVC(C=args.C_linear)
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
     
-    
+
 def get_features(feature):
     '''
-    This function reads the feature(s) given in the input parameters and returns the corresponding tokenizer
+    This function reads the feature(s) given in the input parameters and returns the corresponding function
     
-    @param tokenizer: name of the feature as indicated in the input parameters
-    @return: the tokenizer corresponding to the inputted feature
-    @raise ValueError: raises an exception when the inputted feature can not be matched to a tokenizer
+    @param feature: name of the feature as indicated in the input parameters
+    @return: the function corresponding to the inputted feature
+    @raise ValueError: raises an exception when the inputted feature can not be matched to a function
     '''
     if ',' in feature: #multiple features
         return functools.partial(combine_features,args.feature.split(','))
@@ -179,7 +212,7 @@ def get_features(feature):
     if feature=="pos":
         return pos
     else:
-        raise ValueError(f"Unknown tokenizer: {feature}")
+        raise ValueError(f"Unknown feature: {feature}")
     
 def get_ngrams(char,word):
     '''
