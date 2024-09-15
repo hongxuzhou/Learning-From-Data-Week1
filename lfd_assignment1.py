@@ -10,6 +10,7 @@ This script performs text classification using multiple machine learning algorit
 @arg -tf, --tfidf: specifies whether to use TfidfVectorizer
 @arg -a, --algorithm: specifies the Machine Learning algorithm to use
 @arg -avg, --average: specifies the averaging technique used in evaluation
+@arg -f, --feature: specifies the features to be used in data preprocessing 
 '''
 
 import argparse
@@ -21,6 +22,11 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.svm import SVC, LinearSVC
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, classification_report
+import spacy
+import nltk
+from nltk.stem import PorterStemmer, WordNetLemmatizer
+import string
+import functools
 
 
 def create_arg_parser():
@@ -34,9 +40,11 @@ def create_arg_parser():
     parser.add_argument("-tf", "--tfidf", action="store_true",
                         help="Use the TF-IDF vectorizer instead of CountVectorizer")
     parser.add_argument("-a", "--algorithm", default='naive_bayes', type=str,
-                        help="Machine Learning Algorithm to use. Options are: naive_bayes, decision_tree, random_forest, knn, svc, linear_svc")
+                        help="Machine Learning Algorithm to use. Options are: naive_bayes, decision_tree, random_forest, knn, svc, svc_linear")
     parser.add_argument("-avg", "--average", default='weighted', type=str,
                         help="Averaging technique to use in evaluation. Options are: binary, micro, macro, weighted, samples")
+    parser.add_argument("-f", "--feature", default='identity', type=str,
+                        help="Feature(s) used for tokenizer. Options are: identity, stemming, lemmatizing, ner, pos, or any COMMA-SEPARATED combination of them")
     args = parser.parse_args()
     return args
 
@@ -67,6 +75,47 @@ def read_corpus(corpus_file, use_sentiment):
 def identity(inp):
     '''Dummy function that just returns the input'''
     return inp
+
+def stemming(inp):
+    '''Applies stemming to the input'''
+    stemmer = PorterStemmer()
+    return [stemmer.stem(token) for token in inp]
+
+def lemmatizing(inp):
+    '''Applies lemmatization to the input'''
+    lemmatizer = WordNetLemmatizer()
+    return [lemmatizer.lemmatize(token) for token in inp]
+
+def remove_punct(inp):
+    '''Removes punctuation from the input'''
+    return [token for token in inp if token not in string.punctuation]
+
+def ner(inp):
+    '''Performs Named Entity Recognition on the input'''
+    doc = nlp(' '.join(inp)) # feed input as string to spacy
+    print(inp)
+    outp = []
+    for token in doc:
+        if token.ent_type_:
+            if token.ent_iob == 3: #count only the beginning of an entity to avoid repetition of tags
+                outp.append(token.ent_type_)
+        else:
+            outp.append(token)
+
+    return outp
+
+def pos(inp):
+    '''Replaces each token by its POS tag'''
+    doc = nlp(' '.join(inp))
+    return [token.tag_ for token in doc]
+
+def combine_features(feats,text):
+    '''Combines features by applying them one after the other, in the order in which they are input'''
+    for feat in feats:
+        text = get_tokenizer(feat)(text)
+    
+    return text
+
 
 # Return the classifier indicated by the input arguments
 def get_classifier(algorithm):
@@ -103,6 +152,29 @@ def get_classifier(algorithm):
         return LinearSVC()
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
+    
+def get_tokenizer(feature):
+    '''
+    This function reads the feature(s) given in the input parameters and returns the corresponding tokenizer
+    
+    @param tokenizer: name of the feature as indicated in the input parameters
+    @return: the tokenizer corresponding to the inputted feature
+    @raise ValueError: raises an exception when the inputted feature can not be matched to a tokenizer
+    '''
+    if ',' in feature:
+        return functools.partial(combine_features,args.feature.split(','))
+    if feature=="stemming":
+        return stemming
+    if feature=="lemmatizing":
+        return lemmatizing
+    if feature=="ner":
+        return ner
+    if feature=="pos":
+        return pos
+    else:
+        raise ValueError(f"Unknown tokenizer: {feature}")
+
+
 
 if __name__ == "__main__":
     # Parse the input arguments
@@ -115,11 +187,17 @@ if __name__ == "__main__":
     # Convert the texts to vectors
     # We use a dummy function as tokenizer and preprocessor,
     # since the texts are already preprocessed and tokenized.
+
+    chosen_tokenizer = get_tokenizer(args.feature)
+
+    # Initialise spacy
+    nlp = spacy.load("en_core_web_sm")
+
     if args.tfidf:
-        vec = TfidfVectorizer(preprocessor=identity, tokenizer=identity)
+        vec = TfidfVectorizer(preprocessor=identity, tokenizer=chosen_tokenizer)
     else:
         # Bag of Words vectorizer
-        vec = CountVectorizer(preprocessor=identity, tokenizer=identity)
+        vec = CountVectorizer(preprocessor=identity, tokenizer=chosen_tokenizer)
 
     # Get the classifier that was given in the input arguments
     chosen_classifier = get_classifier(args.algorithm)
@@ -127,8 +205,11 @@ if __name__ == "__main__":
     # Get the averaging method for multi-class classification
     chosen_average = args.average
 
+    ## feature vectors go here
+
     # Create a pipeline by combining the chosen vectorizer and classifier
     classifier = Pipeline([('vec', vec), ('cls', chosen_classifier)])
+
 
     # Train the model using the training set
     classifier.fit(X_train, Y_train)
@@ -154,15 +235,12 @@ if __name__ == "__main__":
     # F1: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.f1_score.html
     f1 = f1_score(Y_test, Y_pred, average=chosen_average)
     print(f"General f1 score: {f1}\n")
-    
 
     # Confusion matrix: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.confusion_matrix.html
     confusion = confusion_matrix(Y_test, Y_pred)
     print(f"Confusion matrix:\n{confusion}")  
 
-
     print("\nPer-class scores")
-
     #Classification report: https://scikit-learn.org/stable/modules/generated/sklearn.metrics.classification_report.html
     class_rep = classification_report(Y_test,Y_pred)
     print(class_rep)
