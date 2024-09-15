@@ -45,6 +45,10 @@ def create_arg_parser():
                         help="Averaging technique to use in evaluation. Options are: binary, micro, macro, weighted, samples")
     parser.add_argument("-f", "--feature", default='identity', type=str,
                         help="Feature(s) used for tokenizer. Options are: identity, stemming, lemmatizing, ner, pos, or any COMMA-SEPARATED combination of them")
+    parser.add_argument("-cn", "--char_ngram", type = int, default = 0,
+                        help = "Use character n-gram. Please specify the maximum n-gram size") 
+    parser.add_argument("-wn", "--word_ngram", type = int, default = 1,
+                        help = "Use word n-gram. Please specify the maximum n-gram size")
     args = parser.parse_args()
     return args
 
@@ -93,7 +97,6 @@ def remove_punct(inp):
 def ner(inp):
     '''Performs Named Entity Recognition on the input'''
     doc = nlp(' '.join(inp)) # feed input as string to spacy
-    print(inp)
     outp = []
     for token in doc:
         if token.ent_type_:
@@ -109,10 +112,11 @@ def pos(inp):
     doc = nlp(' '.join(inp))
     return [token.tag_ for token in doc]
 
+
 def combine_features(feats,text):
     '''Combines features by applying them one after the other, in the order in which they are input'''
     for feat in feats:
-        text = get_tokenizer(feat)(text)
+        text = get_features(feat)(text)
     
     return text
 
@@ -129,31 +133,32 @@ def get_classifier(algorithm):
     # Naive bayes implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.naive_bayes.MultinomialNB.html
     if algorithm == 'naive_bayes':
-        return MultinomialNB()
+        return MultinomialNB(alpha=0.5)
     # Decision tree implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.tree.DecisionTreeClassifier.html
     if algorithm == 'decision_tree':
-        return DecisionTreeClassifier()
+        return DecisionTreeClassifier(max_depth=20)
     # Decision tree implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.ensemble.RandomForestClassifier.html
     if algorithm == 'random_forest':
-        return RandomForestClassifier()
+        return RandomForestClassifier(n_estimators=500, criterion='entropy')
     # K Nearest Neighbours implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.neighbors.KNeighborsClassifier.html
     if algorithm == 'knn':
-        return KNeighborsClassifier()
+        return KNeighborsClassifier(n_neighbors=35, weights='distance', p=1)
     # Support Vector Classification implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.svm.SVC.html
-    if algorithm in ['svc','svm']:
-        return SVC()
+    if algorithm == 'svc':
+        return SVC(C=10, kernel='rbf')
     # Linear Support Vector Classification implementation from sklearn
     # sklearn documentation can be found at: https://scikit-learn.org/stable/modules/generated/sklearn.svm.LinearSVC.html#sklearn.svm.LinearSVC
-    if algorithm in ['svm_linear','svc_linear']:
-        return LinearSVC()
+    if algorithm == 'linear_svc':
+        return LinearSVC(C=0.1)
     else:
         raise ValueError(f"Unknown algorithm: {algorithm}")
     
-def get_tokenizer(feature):
+    
+def get_features(feature):
     '''
     This function reads the feature(s) given in the input parameters and returns the corresponding tokenizer
     
@@ -161,8 +166,10 @@ def get_tokenizer(feature):
     @return: the tokenizer corresponding to the inputted feature
     @raise ValueError: raises an exception when the inputted feature can not be matched to a tokenizer
     '''
-    if ',' in feature:
+    if ',' in feature: #multiple features
         return functools.partial(combine_features,args.feature.split(','))
+    if feature=="identity":
+        return identity
     if feature=="stemming":
         return stemming
     if feature=="lemmatizing":
@@ -173,6 +180,31 @@ def get_tokenizer(feature):
         return pos
     else:
         raise ValueError(f"Unknown tokenizer: {feature}")
+    
+def get_ngrams(char,word):
+    '''
+    This function reads the char_ngrams and word_ngrams parameters given in the input and
+    returns their corresponding values for the analyzer and ngram_range vectorizer arguments
+
+    @param char: maximum n value for character-level ngrams
+    @param word: maximum n value for word-level ngrams
+    @raise ValueError: raises an exception when both types of ngrams are used at the same time
+    @raise ValueError: raises an exception when an invalid 
+    '''
+    # Using default values, no changes
+    if char==0 and word==1:
+        return "word",(1,1)
+
+    # Both character- and word-level ngrams cannot be used at the same time
+    if char!=0 and word!=1:
+        raise ValueError(f"Cannot use char_ngram and word_ngram at the same time")
+    
+    if char>0:
+        return "char",(1,char)
+    if word>1:
+        return "word",(1,word)
+    else:
+        raise ValueError(f"Invalid maximum n-gram size. Please check it is a positive number.")
 
 
 
@@ -188,16 +220,21 @@ if __name__ == "__main__":
     # We use a dummy function as tokenizer and preprocessor,
     # since the texts are already preprocessed and tokenized.
 
-    chosen_tokenizer = get_tokenizer(args.feature)
+    chosen_tokenizer = get_features(args.feature)
+    ngram_level, ngram_range = get_ngrams(args.char_ngram, args.word_ngram)
+    
+    # NER does not work on n-grams (with n>1)
+    if 'ner' in args.feature and ngram_range[1]>1:
+        raise ValueError(f"Named Entity Recognition only works with unigrams")
 
     # Initialise spacy
     nlp = spacy.load("en_core_web_sm")
 
     if args.tfidf:
-        vec = TfidfVectorizer(preprocessor=identity, tokenizer=chosen_tokenizer)
+        vec = TfidfVectorizer(preprocessor=identity, tokenizer=chosen_tokenizer, analyzer=ngram_level, ngram_range=ngram_range)
     else:
         # Bag of Words vectorizer
-        vec = CountVectorizer(preprocessor=identity, tokenizer=chosen_tokenizer)
+        vec = CountVectorizer(preprocessor=identity, tokenizer=chosen_tokenizer, analyzer=ngram_level, ngram_range=ngram_range)
 
     # Get the classifier that was given in the input arguments
     chosen_classifier = get_classifier(args.algorithm)
@@ -205,11 +242,8 @@ if __name__ == "__main__":
     # Get the averaging method for multi-class classification
     chosen_average = args.average
 
-    ## feature vectors go here
-
     # Create a pipeline by combining the chosen vectorizer and classifier
     classifier = Pipeline([('vec', vec), ('cls', chosen_classifier)])
-
 
     # Train the model using the training set
     classifier.fit(X_train, Y_train)
